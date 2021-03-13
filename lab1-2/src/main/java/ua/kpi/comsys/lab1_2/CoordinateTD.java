@@ -16,10 +16,14 @@ public class CoordinateTD {
 
     public CoordinateTD (Direction d, int deg, int min, int sec) throws Exception {
         if (d == Direction.LATITUDE) {
-            if (deg < -90 || deg > 90) throw new Exception("Invalid degrees value. Should be within [-90, 90] range.");
-        } else if (deg < -180 || deg > 180) throw new Exception("Invalid degrees value. Should be within [-180, 180] range.");
-        if (min < 0 || min > 59) throw new Exception("Invalid minutes value. Should be within [0, 59] range.");
-        if (sec < 0 || sec > 59) throw new Exception("Invalid seconds value. Should be within [0, 59] range.");
+            if (deg < -90 || deg > 90) throw new Exception("Error: Invalid degrees value. Should be within [-90, 90] range for N-S direction.");
+            if ((deg == -90 || deg == 90) && (min > 0 || sec > 0)) throw new Exception("Error: Total value is outside [-90, 90] range for N-S direction.");
+        } else{
+            if (deg < -180 || deg > 180) throw new Exception("Error: Invalid degrees value. Should be within [-180, 180] range for E-W direction.");
+            if ((deg == -180 || deg == 180) && (min > 0 || sec > 0)) throw new Exception("Error: Total value is outside [-180, 180] range for E-W direction.");
+        }
+        if (min < 0 || min > 59) throw new Exception("Error: Invalid minutes value. Should be within [0, 59] range.");
+        if (sec < 0 || sec > 59) throw new Exception("Error: Invalid seconds value. Should be within [0, 59] range.");
 
         this.direction = d;
         this.degrees = deg;
@@ -28,13 +32,17 @@ public class CoordinateTD {
     }
 
     public String degreeStr() {
-        String degStr = this.degrees + "°" + this.minutes + "'" + this.seconds + "\" ";
+        String degStr = Math.abs(this.degrees) + "°" + this.minutes + "'" + this.seconds + "\" ";
         if (this.direction == Direction.LATITUDE) {
             if (this.degrees > 0) degStr += "N";
             else if (this.degrees < 0) degStr += "S";
+            else if (this.minutes > 0 || this.seconds > 0) degStr += "N";
+            else degStr += "N-S";
         } else {
             if (this.degrees > 0) degStr += "E";
             else if (this.degrees < 0) degStr += "W";
+            else if (this.minutes > 0 || this.seconds > 0) degStr += "E";
+            else degStr += "E-W";
         }
         return degStr;
     }
@@ -43,14 +51,14 @@ public class CoordinateTD {
         double decVal;
         if (this.degrees >= 0) decVal = this.degrees + (double)this.minutes / 60 + (double)this.seconds / 3600;
         else decVal = this.degrees - (double)this.minutes / 60 - (double)this.seconds / 3600;
-        String decStr = decVal + "° ";
+        String decStr = Math.abs(decVal) + "° ";
         if (this.direction == Direction.LATITUDE) {
-            if (this.degrees > 0) decStr += "N";
-            else if (this.degrees < 0) decStr += "S";
+            if (decVal > 0) decStr += "N";
+            else if (decVal < 0) decStr += "S";
             else decStr += "N-S";
         } else {
-            if (this.degrees > 0) decStr += "E";
-            else if (this.degrees < 0) decStr += "W";
+            if (decVal > 0) decStr += "E";
+            else if (decVal < 0) decStr += "W";
             else decStr += "E-W";
         }
         return decStr;
@@ -69,31 +77,28 @@ public class CoordinateTD {
             double decVal2;
             if (coord2.degrees >= 0) decVal2 = coord2.degrees + (double) (coord2.minutes / 60) + (double) (coord2.seconds / 3600);
             else decVal2 = coord2.degrees - (double) (coord2.minutes / 60) - (double) (coord2.seconds / 3600);
-            CoordinateTD maxCoord, minCoord;
-            if (decVal1 >= decVal2) {
-                maxCoord = coord1;
-                minCoord = coord2;
-            } else {
-                maxCoord = coord2;
-                minCoord = coord1;
-            }
-            int newDeg = (maxCoord.degrees + minCoord.degrees)/2;
+            int newDeg = (coord1.degrees + coord2.degrees)/2;
             int newMin = 0;
             int newSec = 0;
-            if (minCoord.degrees < 0) {
-                newSec = Math.abs(maxCoord.seconds - minCoord.seconds)/2 + Math.abs((maxCoord.minutes - minCoord.minutes)%2)*30;
-                newMin = Math.abs(maxCoord.minutes - minCoord.minutes)/2 + Math.abs((maxCoord.degrees + minCoord.degrees)%2)*30;
+            if ((decVal1 > 0 && decVal2 > 0) || (decVal1 < 0 && decVal2 < 0)) {
+                newSec += (coord1.seconds + coord2.seconds)/2 + ((coord1.minutes + coord2.minutes)%2)*30;
+                newMin += (coord1.minutes + coord2.minutes)/2 + ((coord1.degrees + coord2.degrees)%2)*30;
             } else {
-                newSec += (maxCoord.seconds + minCoord.seconds)/2 + ((maxCoord.minutes + minCoord.minutes)%2)*30;
-                newMin += (maxCoord.minutes + minCoord.minutes)/2 + ((maxCoord.degrees + minCoord.degrees)%2)*30;
+                if (decVal1 >= decVal2) {
+                    newSec = Math.abs(coord1.seconds - coord2.seconds)/2 + Math.abs((coord1.minutes - coord2.minutes)%2)*30;
+                    newMin = Math.abs(coord1.minutes - coord2.minutes)/2 + Math.abs((coord1.degrees + coord2.degrees)%2)*30;
+                } else {
+                    newSec = Math.abs(coord2.seconds - coord1.seconds)/2 + Math.abs((coord2.minutes - coord1.minutes)%2)*30;
+                    newMin = Math.abs(coord2.minutes - coord1.minutes)/2 + Math.abs((coord1.degrees + coord2.degrees)%2)*30;
+                }
             }
             while (newSec > 59) {
-                newMin += 1;
+                newMin++;
                 newSec -= 60;
             }
             while (newMin > 59) {
-                if (newDeg>=0) newDeg += 1;
-                else newDeg -= 1;
+                if (newDeg < 0) newDeg--;
+                else newDeg++;
                 newMin -= 60;
             }
             try {
