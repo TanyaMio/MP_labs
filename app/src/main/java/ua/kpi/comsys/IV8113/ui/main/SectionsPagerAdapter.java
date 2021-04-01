@@ -32,6 +32,8 @@ public class SectionsPagerAdapter extends FragmentPagerAdapter {
         switch (position){
             case 0:
                 return new HomeFragment();
+            case 1:
+                return new GraphsFragment();
             default:
                 return new Fragment();
         }

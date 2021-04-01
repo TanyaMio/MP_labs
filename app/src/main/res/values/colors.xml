@@ -7,4 +7,8 @@
     <color name="yellow">#FBD87F</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="pie1">#1383CE</color>
+    <color name="pie2">#6209A4</color>
+    <color name="pie3">#F6D838</color>
+    <color name="pie4">#5F5F5F</color>
 </resources>

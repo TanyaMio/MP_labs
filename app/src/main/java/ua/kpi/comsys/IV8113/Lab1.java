@@ -27,5 +27,6 @@ public class Lab1 extends AppCompatActivity {
         TabLayout tabs = findViewById(R.id.tabs);
         tabs.setupWithViewPager(viewPager);
         tabs.getTabAt(0).setIcon(R.drawable.ic_action_home);
+        tabs.getTabAt(1).setIcon(R.drawable.ic_action_graph);
     }
 }
