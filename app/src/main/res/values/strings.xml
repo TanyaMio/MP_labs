@@ -4,4 +4,10 @@
     <string name="home_lbl"><pre>Дьяченко Тетяна\nГрупа ІВ-81\nЗК ІВ-8113</pre></string>
     <string name="tab_text_1">Home</string>
     <string name="tab_text_2">Graphs</string>
+    <string name="tab_text_3">Books</string>
+    <string name="title_placeholder">Untitled</string>
+    <string name="subtitle_placeholder">No subtitle</string>
+    <string name="isbn_placeholder">ISBN not provided</string>
+    <string name="price_placeholder">0.00 USD</string>
+    <string name="isbn"><pre>ISBN13: </pre></string>
 </resources>
