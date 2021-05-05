@@ -8,17 +8,18 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/fox_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MP_Lab">
+        android:theme="@style/Theme.MP_Lab.NoActionBar">
         <activity
             android:name=".Lab1"
-            android:label="@string/title_activity_lab1"
-            android:theme="@style/Theme.MP_Lab.NoActionBar">
+            android:label="@string/title_activity_lab1">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".BookActivity"/>
+        <activity android:name=".AddBookActivity"/>
     </application>
 
 </manifest>
