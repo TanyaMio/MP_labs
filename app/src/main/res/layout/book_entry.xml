@@ -24,7 +24,7 @@
         android:textColor="@color/pale_grey"
         android:layout_marginLeft="10dp"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/cover"
+        app:layout_constraintLeft_toRightOf="@id/cover"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
@@ -37,8 +37,8 @@
         android:textColor="@color/pale_grey"
         android:layout_marginTop="10dp"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/cover"
-        app:layout_constraintTop_toBottomOf="@+id/title" />
+        app:layout_constraintLeft_toRightOf="@id/cover"
+        app:layout_constraintTop_toBottomOf="@id/title" />
 
     <TextView
         android:id="@+id/isbn"
@@ -50,8 +50,8 @@
         android:layout_marginLeft="10dp"
         android:layout_marginTop="10dp"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/cover"
-        app:layout_constraintTop_toBottomOf="@+id/subtitle" />
+        app:layout_constraintLeft_toRightOf="@id/cover"
+        app:layout_constraintTop_toBottomOf="@id/subtitle" />
 
     <TextView
         android:id="@+id/price"
@@ -63,8 +63,8 @@
         android:layout_marginLeft="10dp"
         android:layout_marginTop="10dp"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/cover"
-        app:layout_constraintTop_toBottomOf="@+id/isbn" />
+        app:layout_constraintLeft_toRightOf="@id/cover"
+        app:layout_constraintTop_toBottomOf="@id/isbn" />
 
     <View
         android:id="@+id/divider"

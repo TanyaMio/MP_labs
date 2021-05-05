@@ -1,20 +1,30 @@
 package ua.kpi.comsys.IV8113.ui.main;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.SearchView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -24,12 +34,26 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import ua.kpi.comsys.IV8113.AddBookActivity;
+import ua.kpi.comsys.IV8113.BookActivity;
+import ua.kpi.comsys.IV8113.Lab1;
 import ua.kpi.comsys.IV8113.R;
 import ua.kpi.comsys.IV8113.adapters.BooksAdapter;
 import ua.kpi.comsys.IV8113.models.Book;
+import ua.kpi.comsys.IV8113.adapters.BooksAdapter;
 
 
-public class BooksFragment extends Fragment {
+public class BooksFragment extends Fragment implements BooksAdapter.BookListener {
+
+    private static RecyclerView recyclerView;
+    private static BooksAdapter adapter;
+    private SearchView booksSearch;
+    private static TextView noResults;
+    private static ArrayList<Book> books;
+    private static ArrayList<Book> books_result;
+    private FloatingActionButton addBookBtn;
+    int addBookLaunch = 1;
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -41,10 +65,48 @@ public class BooksFragment extends Fragment {
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_books, container, false);
-        ArrayList<Book> books = getBooks();
-        RecyclerView recyclerView = root.findViewById(R.id.books_list);
-        BooksAdapter adapter = new BooksAdapter(this.getContext(), books);
+        books = getBooks();
+        books_result = new ArrayList<>(books);
+        recyclerView = root.findViewById(R.id.books_list);
+        adapter = new BooksAdapter(this.getContext(), books_result, this);
         recyclerView.setAdapter(adapter);
+        booksSearch = root.findViewById(R.id.books_search);
+        noResults = root.findViewById(R.id.noRes);
+        noResults.setVisibility(View.INVISIBLE);
+        booksSearch.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                onQueryTextChange(query);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                noResults.setVisibility(View.INVISIBLE);
+                String query = newText.toLowerCase();
+                books_result = new ArrayList<>();
+                for(int i=0; i<books.size(); i++) {
+                    if (books.get(i).getTitle().toLowerCase().contains(query)) {
+                        books_result.add(books.get(i));
+                    }
+                }
+                adapter = new BooksAdapter(booksSearch.getContext(), books_result, BooksFragment.this);
+                recyclerView.setAdapter(adapter);
+                if (books_result.size() == 0) {
+                    noResults.setVisibility(View.VISIBLE);
+                }
+                return true;
+            }
+        });
+
+        addBookBtn = root.findViewById(R.id.addBookBtn);
+        addBookBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(addBookBtn.getContext(), AddBookActivity.class);
+                startActivityForResult(intent, addBookLaunch);
+            }
+        });
         return root;
     }
 
@@ -88,4 +150,62 @@ public class BooksFragment extends Fragment {
 
         return books;
     }
+
+    @Override
+    public void onBookClick(int position) {
+        Intent intent = new Intent(this.getContext(), BookActivity.class);
+        intent.putExtra("book", books_result.get(position));
+        startActivity(intent);
+    }
+
+    @Override
+    public void onBookHold(int position) {
+        new AlertDialog.Builder(this.getContext())
+                .setTitle(this.getContext().getResources().getString(R.string.delete_confirm))
+                .setMessage("Do you really want to delete \"" + books_result.get(position).getTitle() + "\"?")
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        Book rmBook = books_result.get(position);
+                        for (int i=0; i<books.size(); i++) {
+                            if (books.get(i).getIsbn13().equals(rmBook.getIsbn13())) {
+                                books.remove(i);
+                            }
+                        }
+                        books_result.remove(position);
+                        adapter = new BooksAdapter(booksSearch.getContext(), books_result, BooksFragment.this);
+                        recyclerView.setAdapter(adapter);
+                        if (books_result.size() == 0) {
+                            noResults.setVisibility(View.VISIBLE);
+                        }
+                    }})
+                .setNegativeButton(android.R.string.no, null).show();
+
+    }
+
+
+    private void addBook(Book newBook) {
+        this.books.add(newBook);
+        if (this.booksSearch.getQuery().toString().isEmpty() || newBook.getTitle().toLowerCase().contains(this.booksSearch.getQuery().toString().toLowerCase())) {
+            books_result.add(newBook);
+            adapter = new BooksAdapter(booksSearch.getContext(), books_result, this);
+            recyclerView.setAdapter(adapter);
+            if (books_result.size() == 0) {
+                noResults.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == addBookLaunch) {
+            if (resultCode == Activity.RESULT_OK) {
+                Book newBook = data.getParcelableExtra("book");
+                this.addBook(newBook);
+            }
+        }
+    }
+
 }

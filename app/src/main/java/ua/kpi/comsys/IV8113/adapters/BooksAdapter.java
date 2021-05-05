@@ -2,6 +2,7 @@ package ua.kpi.comsys.IV8113.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -9,6 +10,7 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import ua.kpi.comsys.IV8113.R;
@@ -18,17 +20,19 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
 
     private final LayoutInflater inflater;
     private final List<Book> books;
+    private BookListener bookListener;
 
-    public BooksAdapter(Context context, List<Book> books) {
+    public BooksAdapter(Context context, List<Book> books, BookListener bookListener) {
         this.books = books;
         this.inflater = LayoutInflater.from(context);
+        this.bookListener = bookListener;
     }
     @Override
     public BooksAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
         View view = inflater.inflate(R.layout.book_entry, parent, false);
         view.getResources();
-        return new ViewHolder(view);
+        return new ViewHolder(view, bookListener);
     }
 
     @Override
@@ -56,8 +60,6 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
             holder.priceView.setText(book.getPrice());
             holder.priceView.setTextColor(holder.titleView.getResources().getColor(R.color.black));
         }
-
-        holder.priceView.setText(book.getPrice());
     }
 
     @Override
@@ -65,16 +67,32 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
         return books.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    public static class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
         final ImageView coverView;
         final TextView titleView, subtitleView, isbnView, priceView;
-        ViewHolder(View view){
+        BookListener bookListener;
+        ViewHolder(View view, BookListener bookListener){
             super(view);
             coverView = view.findViewById(R.id.cover);
             titleView = view.findViewById(R.id.title);
             subtitleView = view.findViewById(R.id.subtitle);
             isbnView = view.findViewById(R.id.isbn);
             priceView = view.findViewById(R.id.price);
+            this.bookListener = bookListener;
+            view.setOnClickListener(this);
+            view.setOnLongClickListener(this);
+
+        }
+
+        @Override
+        public void onClick(View v) {
+            bookListener.onBookClick(getAdapterPosition());
+        }
+
+        @Override
+        public boolean onLongClick(View v) {
+            bookListener.onBookHold(getAdapterPosition());
+            return false;
         }
     }
 
@@ -83,4 +101,8 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
         return position;
     }
 
+    public interface BookListener {
+        void onBookClick(int position);
+        void onBookHold(int position);
+    }
 }
