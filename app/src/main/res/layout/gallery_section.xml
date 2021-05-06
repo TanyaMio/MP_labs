@@ -11,7 +11,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"/>
     <ImageView
@@ -19,7 +20,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintStart_toEndOf="@id/img_1"
         app:layout_constraintTop_toTopOf="parent"/>
     <ImageView
@@ -27,7 +29,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/img_1"/>
     <ImageView
@@ -35,7 +38,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/img_3"/>
     <ImageView
@@ -43,7 +47,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintTop_toBottomOf="@id/img_2"
         app:layout_constraintStart_toStartOf="parent"/>
     <ImageView
@@ -51,7 +56,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintTop_toBottomOf="@id/img_2"
         app:layout_constraintStart_toEndOf="@id/img_5"/>
     <ImageView
@@ -59,7 +65,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintTop_toBottomOf="@id/img_2"
         app:layout_constraintStart_toEndOf="@id/img_6"/>
     <ImageView
@@ -67,7 +74,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:cropToPadding="true"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:background="@color/pink_light"
         app:layout_constraintTop_toBottomOf="@id/img_2"
         app:layout_constraintStart_toEndOf="@id/img_7"/>
 
