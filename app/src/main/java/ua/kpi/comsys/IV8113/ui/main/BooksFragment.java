@@ -58,6 +58,7 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        books = getBooks();
     }
 
     @Override
@@ -65,7 +66,7 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_books, container, false);
-        books = getBooks();
+
         books_result = new ArrayList<>(books);
         recyclerView = root.findViewById(R.id.books_list);
         adapter = new BooksAdapter(this.getContext(), books_result, this);

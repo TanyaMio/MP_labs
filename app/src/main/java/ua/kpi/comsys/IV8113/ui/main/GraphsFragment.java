@@ -29,10 +29,10 @@ import static android.view.View.VISIBLE;
 public class GraphsFragment extends Fragment {
 
     LineChart lineChart;
-    ArrayList<Entry> line_entries = new ArrayList<>();
+    ArrayList<Entry> line_entries;
     LineDataSet line_dataSet;
     PieChart pieChart;
-    ArrayList<PieEntry> pie_entries = new ArrayList<>();
+    ArrayList<PieEntry> pie_entries;
     PieDataSet pie_dataSet;
 
     @Override
@@ -46,6 +46,8 @@ public class GraphsFragment extends Fragment {
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_graphs, container, false);
         Switch switch_graph = root.findViewById(R.id.switch1);
+        line_entries = new ArrayList<>();
+        pie_entries = new ArrayList<>();
         lineChart = root.findViewById(R.id.line);
         pieChart = root.findViewById(R.id.pie);
         pieChart.setVisibility(INVISIBLE);

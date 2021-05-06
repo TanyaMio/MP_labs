@@ -5,6 +5,7 @@
     <string name="tab_text_1">Home</string>
     <string name="tab_text_2">Graphs</string>
     <string name="tab_text_3">Books</string>
+    <string name="tab_text_4">Gallery</string>
     <string name="title_placeholder">Untitled</string>
     <string name="subtitle_placeholder">No subtitle</string>
     <string name="isbn_placeholder">ISBN not provided</string>

@@ -29,5 +29,6 @@ public class Lab1 extends AppCompatActivity {
         tabs.getTabAt(0).setIcon(R.drawable.ic_action_home);
         tabs.getTabAt(1).setIcon(R.drawable.ic_action_graph);
         tabs.getTabAt(2).setIcon(R.drawable.ic_action_book);
+        tabs.getTabAt(3).setIcon(R.drawable.ic_action_img);
     }
 }
