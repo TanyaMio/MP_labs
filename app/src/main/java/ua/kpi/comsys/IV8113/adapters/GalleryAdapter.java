@@ -2,6 +2,7 @@ package ua.kpi.comsys.IV8113.adapters;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,7 +25,7 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ViewHold
 
     public GalleryAdapter(Context context, int width) {
         this.inflater = LayoutInflater.from(context);
-        this.maxWidth = width;
+        this.maxWidth = (int) (width - 20*((float) context.getResources().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT));
     }
 
     @Override
@@ -57,8 +58,10 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ViewHold
             holder.imgs[i].getLayoutParams().width = maxWidth/4;
             holder.imgs[i].getLayoutParams().height = maxWidth/4;
         }
-        holder.imgs[1].getLayoutParams().width = 3*maxWidth/4;
-        holder.imgs[1].getLayoutParams().height = 3*maxWidth/4;
+        if (section_pics.size() > 1) {
+            holder.imgs[1].getLayoutParams().width = 3*maxWidth/4;
+            holder.imgs[1].getLayoutParams().height = 3*maxWidth/4;
+        }
     }
 
     @Override
