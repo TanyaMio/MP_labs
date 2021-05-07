@@ -1,5 +1,6 @@
 package ua.kpi.comsys.IV8113;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -9,16 +10,27 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.bumptech.glide.Glide;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import ua.kpi.comsys.IV8113.models.Book;
 
 public class BookActivity extends AppCompatActivity {
 
     private static Book book;
+    private final String apiURL = "https://api.itbook.store/1.0/books/";
 
     private static ImageButton back_button;
 
@@ -55,8 +67,13 @@ public class BookActivity extends AppCompatActivity {
             cover = findViewById(R.id.book_cover);
             findViewById(R.id.cover_text).setVisibility(View.INVISIBLE);
             tmp = book.getImage();
-            cover.setImageResource(getResources().getIdentifier(tmp.substring(0, tmp.lastIndexOf(".")),
-                    "raw", getPackageName()));
+
+            Glide.with(this)
+                    .load(tmp)
+                    .placeholder(R.drawable.ic_action_load)
+                    .thumbnail(Glide.with(this).load(R.raw.spinner_icon))
+                    .dontAnimate()
+                    .into(cover);
         }
         if (book.getTitle() != null && !book.getTitle().isEmpty()) {
             title = findViewById(R.id.book_title);
@@ -75,78 +92,102 @@ public class BookActivity extends AppCompatActivity {
         }
         if (book.getIsbn13() != null && !book.getIsbn13().isEmpty()) {
             isbn = findViewById(R.id.book_isbn);
-            tmp = getResources().getString(R.string.isbn) + book.getIsbn13();
-            isbn.setText(tmp);
+            isbn.setText(book.getIsbn13());
             isbn.setTextColor(getResources().getColor(R.color.black));
-            book = findExtraInfo(book);
-            if (book.getAuthors() != null && !book.getAuthors().isEmpty()) {
-                authors = findViewById(R.id.book_authors);
-                authors.setText(book.getAuthors());
-                authors.setTextColor(getResources().getColor(R.color.black));
-            }
-            if (book.getPublisher() != null && !book.getPublisher().isEmpty()) {
-                publisher = findViewById(R.id.book_publisher);
-                publisher.setText(book.getPublisher());
-                publisher.setTextColor(getResources().getColor(R.color.black));
-            }
-            if (book.getYear() != null && !book.getYear().isEmpty()) {
-                year = findViewById(R.id.book_year);
-                year.setText(book.getYear());
-                year.setTextColor(getResources().getColor(R.color.black));
-            }
-            if (book.getPages() != null && !book.getPages().isEmpty()) {
-                pages = findViewById(R.id.book_pages);
-                pages.setText(book.getPages());
-                pages.setTextColor(getResources().getColor(R.color.black));
-            }
-            if (book.getRating() != null && !book.getRating().isEmpty()) {
-                tmp = book.getRating() + getResources().getString(R.string.outof5);
-                rating = findViewById(R.id.book_rating);
-                rating.setText(tmp);
-                rating.setTextColor(getResources().getColor(R.color.black));
-            }
-            if (book.getDescription() != null && !book.getDescription().isEmpty()) {
-                description = findViewById(R.id.book_description);
-                description.setText(book.getDescription());
-                description.setTextColor(getResources().getColor(R.color.black));
-            }
+            authors = findViewById(R.id.book_authors);
+            publisher = findViewById(R.id.book_publisher);
+            year = findViewById(R.id.book_year);
+            pages = findViewById(R.id.book_pages);
+            rating = findViewById(R.id.book_rating);
+            description = findViewById(R.id.book_description);
+
+            tmp = apiURL + book.getIsbn13();
+            new JSONTask().execute(tmp);
         }
 
     }
 
-    private Book findExtraInfo(Book book) {
-        String filename = "i" + book.getIsbn13();
-        int id = getResources().getIdentifier(filename, "raw", getPackageName());
-        if (id != 0) {
-            InputStream inputStream = getResources().openRawResource(id);
-            BufferedReader bufferedReader= new BufferedReader(new InputStreamReader(inputStream));
-            String eachline = null;
-            String currBook = "";
-            try {
-                eachline = bufferedReader.readLine();
-                while (eachline != null) {
-                    currBook += eachline;
-                    eachline = bufferedReader.readLine();
-                }
-                int elementStart;
-                currBook = currBook.substring(currBook.indexOf("{")+1, currBook.indexOf("}"));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"authors\":")+"\"authors\":".length());
-                book.setAuthors(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"publisher\":")+"\"publisher\":".length());
-                book.setPublisher(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"year\":")+"\"year\":".length());
-                book.setYear(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"pages\":")+"\"pages\":".length());
-                book.setPages(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"rating\":")+"\"rating\":".length());
-                book.setRating(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"desc\":")+"\"desc\":".length());
-                book.setDescription(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
+    public class JSONTask extends AsyncTask<String, String, JSONObject> {
 
+        @Override
+        protected JSONObject doInBackground(String... params) {
+            HttpsURLConnection connection = null;
+            BufferedReader reader = null;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                }
+                String res = buffer.toString();
+                return new JSONObject(res);
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
             } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(JSONObject result) {
+            try {
+                book.setAuthors(result.getString("authors"));
+                book.setPublisher(result.getString("publisher"));
+                book.setYear(result.getString("year"));
+                book.setPages(result.getString("pages"));
+                book.setRating(result.getString("rating"));
+                book.setDescription(result.getString("desc"));
+                if (book.getAuthors() != null && !book.getAuthors().isEmpty()) {
+                    authors.setText(book.getAuthors());
+                    authors.setTextColor(getResources().getColor(R.color.black));
+                }
+                if (book.getPublisher() != null && !book.getPublisher().isEmpty()) {
+                    publisher.setText(book.getPublisher());
+                    publisher.setTextColor(getResources().getColor(R.color.black));
+                }
+                if (book.getYear() != null && !book.getYear().isEmpty()) {
+                    year.setText(book.getYear());
+                    year.setTextColor(getResources().getColor(R.color.black));
+                }
+                if (book.getPages() != null && !book.getPages().isEmpty()) {
+                    pages.setText(book.getPages());
+                    pages.setTextColor(getResources().getColor(R.color.black));
+                }
+                if (book.getRating() != null && !book.getRating().isEmpty()) {
+                    String tmp = book.getRating() + getResources().getString(R.string.outof5);
+                    rating.setText(tmp);
+                    rating.setTextColor(getResources().getColor(R.color.black));
+                }
+                if (book.getDescription() != null && !book.getDescription().isEmpty()) {
+                    description.setText(book.getDescription());
+                    description.setTextColor(getResources().getColor(R.color.black));
+                }
+            } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
-        return book;
     }
 }

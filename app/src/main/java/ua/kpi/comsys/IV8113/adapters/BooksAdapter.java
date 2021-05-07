@@ -1,6 +1,8 @@
 package ua.kpi.comsys.IV8113.adapters;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -10,8 +12,22 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import ua.kpi.comsys.IV8113.R;
 import ua.kpi.comsys.IV8113.models.Book;
@@ -19,11 +35,11 @@ import ua.kpi.comsys.IV8113.models.Book;
 public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
 
     private final LayoutInflater inflater;
-    private final List<Book> books;
+    private List<Book> books;
     private BookListener bookListener;
 
-    public BooksAdapter(Context context, List<Book> books, BookListener bookListener) {
-        this.books = books;
+    public BooksAdapter(Context context, BookListener bookListener) {
+        books = new ArrayList<>();
         this.inflater = LayoutInflater.from(context);
         this.bookListener = bookListener;
     }
@@ -40,8 +56,12 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
         Book book = books.get(position);
         String tmp = book.getImage();
         if (tmp != null) {
-            holder.coverView.setImageResource(holder.coverView.getResources().getIdentifier(tmp.substring(0, tmp.lastIndexOf(".")),
-                    "raw", holder.coverView.getContext().getPackageName()));
+            Glide.with(holder.coverView.getContext())
+                    .load(tmp)
+                    .placeholder(R.drawable.ic_action_load)
+                    .thumbnail(Glide.with(holder.coverView.getContext()).load(R.raw.spinner_icon))
+                    .dontAnimate()
+                    .into(holder.coverView);
         }
         if(!book.getTitle().isEmpty()) {
             holder.titleView.setText(book.getTitle());
@@ -67,7 +87,7 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
         return books.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
+    public static class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         final ImageView coverView;
         final TextView titleView, subtitleView, isbnView, priceView;
         BookListener bookListener;
@@ -80,7 +100,6 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
             priceView = view.findViewById(R.id.price);
             this.bookListener = bookListener;
             view.setOnClickListener(this);
-            view.setOnLongClickListener(this);
 
         }
 
@@ -89,11 +108,6 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
             bookListener.onBookClick(getAdapterPosition());
         }
 
-        @Override
-        public boolean onLongClick(View v) {
-            bookListener.onBookHold(getAdapterPosition());
-            return false;
-        }
     }
 
     @Override
@@ -103,6 +117,19 @@ public class BooksAdapter extends RecyclerView.Adapter<BooksAdapter.ViewHolder>{
 
     public interface BookListener {
         void onBookClick(int position);
-        void onBookHold(int position);
+    }
+
+    public void addBook(Book book) {
+        this.books.add(book);
+        this.notifyDataSetChanged();
+    }
+
+    public Book getBook(int position) {
+        return  this.books.get(position);
+    }
+
+    public void clear() {
+        this.books = new ArrayList<>();
+        this.notifyDataSetChanged();
     }
 }

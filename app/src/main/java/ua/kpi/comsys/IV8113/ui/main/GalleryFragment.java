@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.DisplayMetrics;
@@ -17,19 +18,30 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import ua.kpi.comsys.IV8113.R;
 import ua.kpi.comsys.IV8113.adapters.GalleryAdapter;
+import ua.kpi.comsys.IV8113.models.Book;
 
 public class GalleryFragment extends Fragment {
 
     private static RecyclerView recyclerView;
     private static GalleryAdapter adapter;
-    private static FloatingActionButton addImgBtn;
-    private final int GALLERY_REQUEST = 1;
-    private static int curr_img;
     private static int screenWidth;
+    private final String ImgRequest = "https://pixabay.com/api/?key=19193969-87191e5db266905fe8936d565&q=hot+summer&image_type=photo&per_page=24";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -48,40 +60,75 @@ public class GalleryFragment extends Fragment {
 
         recyclerView = root.findViewById(R.id.gallery);
         if (adapter == null) {
-            adapter = new GalleryAdapter(this.getContext(), screenWidth);
+            adapter = new GalleryAdapter(this.getActivity().getApplicationContext(), screenWidth);
         } else {
             adapter.setMaxWidth(screenWidth);
             adapter.notifyDataSetChanged();
         }
         recyclerView.setAdapter(adapter);
 
-        addImgBtn = root.findViewById(R.id.addImgBtn);
-        addImgBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-                photoPickerIntent.setType("image/*");
-                startActivityForResult(photoPickerIntent, GALLERY_REQUEST);
-            }
-        });
+        new JSONTask().execute(ImgRequest);
+
         return root;
     }
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if(resultCode == Activity.RESULT_OK)
-            switch (requestCode){
-                case GALLERY_REQUEST:
-                    Uri selectedImage = data.getData();
-                    try {
-                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(getActivity().getContentResolver(), selectedImage);
-                        adapter.addImg(bitmap);
-                    } catch (Exception e) {
+    public class JSONTask extends AsyncTask<String, String, JSONArray> {
 
+        @Override
+        protected JSONArray doInBackground(String... params) {
+            HttpsURLConnection connection = null;
+            BufferedReader reader = null;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                }
+                String res = buffer.toString();
+                return new JSONArray(res.substring(res.indexOf("["), res.indexOf("]")+1));
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
                     }
-                    break;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(JSONArray result) {
+            adapter.clear();
+            for (int i = 0; i < result.length(); i++) {
+                try {
+                    JSONObject row = result.getJSONObject(i);
+                    String imgURL = row.getString("webformatURL");
+                    adapter.addImg(imgURL);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
 }

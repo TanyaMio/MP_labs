@@ -11,6 +11,8 @@ import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+
 import java.util.ArrayList;
 
 import ua.kpi.comsys.IV8113.R;
@@ -19,13 +21,16 @@ import ua.kpi.comsys.IV8113.R;
 public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ViewHolder> {
 
     private final LayoutInflater inflater;
-    private final ArrayList<ArrayList<Bitmap>> pictures = new ArrayList<>();
+    private ArrayList<ArrayList<String>> pictures = new ArrayList<>();
     private int maxWidth;
+    private final double coef;
     private static int curr_img = 0;
 
     public GalleryAdapter(Context context, int width) {
         this.inflater = LayoutInflater.from(context);
-        this.maxWidth = (int) (width - 20*((float) context.getResources().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT));
+        this.coef = ((float) context.getResources().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+        this.maxWidth = (int) (width - 20*coef);
+
     }
 
     @Override
@@ -52,9 +57,14 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(GalleryAdapter.ViewHolder holder, int position) {
-        ArrayList<Bitmap> section_pics = pictures.get(position);
+        ArrayList<String> section_pics = pictures.get(position);
         for (int i=0; i<section_pics.size(); i++) {
-            holder.imgs[i].setImageBitmap(section_pics.get(i));
+            Glide.with(holder.imgs[i].getContext())
+                    .load(section_pics.get(i))
+                    .placeholder(R.drawable.ic_action_load)
+                    .thumbnail(Glide.with(holder.imgs[i].getContext()).load(R.raw.spinner_icon))
+                    .dontAnimate()
+                    .into(holder.imgs[i]);
             holder.imgs[i].getLayoutParams().width = maxWidth/4;
             holder.imgs[i].getLayoutParams().height = maxWidth/4;
         }
@@ -74,18 +84,24 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ViewHold
         return position;
     }
 
-    public void addImg(Bitmap bitmap) {
+    public void addImg(String location) {
         if (curr_img == 8 || pictures.size()==0) {
             pictures.add(new ArrayList<>());
             curr_img = 0;
         }
-        pictures.get(pictures.size()-1).add(bitmap);
+        pictures.get(pictures.size()-1).add(location);
         curr_img++;
         this.notifyDataSetChanged();
     }
 
 
     public void setMaxWidth(int maxWidth) {
-        this.maxWidth = maxWidth;
+        this.maxWidth = (int) (maxWidth - 20*coef);
+    }
+
+    public void clear() {
+        this.pictures = new ArrayList<>();
+        curr_img = 0;
+        this.notifyDataSetChanged();
     }
 }

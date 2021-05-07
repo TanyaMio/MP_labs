@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.view.LayoutInflater;
@@ -26,13 +27,24 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import ua.kpi.comsys.IV8113.AddBookActivity;
 import ua.kpi.comsys.IV8113.BookActivity;
@@ -49,16 +61,12 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
     private static BooksAdapter adapter;
     private SearchView booksSearch;
     private static TextView noResults;
-    private static ArrayList<Book> books;
-    private static ArrayList<Book> books_result;
-    private FloatingActionButton addBookBtn;
-    int addBookLaunch = 1;
+    private final String apiURL = "https://api.itbook.store/1.0/search/";
 
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        books = getBooks();
     }
 
     @Override
@@ -67,13 +75,18 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_books, container, false);
 
-        books_result = new ArrayList<>(books);
         recyclerView = root.findViewById(R.id.books_list);
-        adapter = new BooksAdapter(this.getContext(), books_result, this);
+        if (adapter == null) {
+            adapter = new BooksAdapter(this.getActivity().getApplicationContext(), this);
+        }
         recyclerView.setAdapter(adapter);
         booksSearch = root.findViewById(R.id.books_search);
         noResults = root.findViewById(R.id.noRes);
-        noResults.setVisibility(View.INVISIBLE);
+        if (adapter.getItemCount() == 0) {
+            noResults.setVisibility(View.VISIBLE);
+        } else {
+            noResults.setVisibility(View.INVISIBLE);
+        }
         booksSearch.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -83,130 +96,97 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
 
             @Override
             public boolean onQueryTextChange(String newText) {
-                noResults.setVisibility(View.INVISIBLE);
-                String query = newText.toLowerCase();
-                books_result = new ArrayList<>();
-                for(int i=0; i<books.size(); i++) {
-                    if (books.get(i).getTitle().toLowerCase().contains(query)) {
-                        books_result.add(books.get(i));
+                if (newText.length() > 2) {
+                    try {
+                        String query = URLEncoder.encode(newText.toLowerCase(), "utf-8");
+                        String JSONurl = apiURL + query;
+                        new JSONTask().execute(JSONurl);
+                    } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
                     }
-                }
-                adapter = new BooksAdapter(booksSearch.getContext(), books_result, BooksFragment.this);
-                recyclerView.setAdapter(adapter);
-                if (books_result.size() == 0) {
+                } else {
+                    adapter.clear();
                     noResults.setVisibility(View.VISIBLE);
                 }
                 return true;
             }
         });
-
-        addBookBtn = root.findViewById(R.id.addBookBtn);
-        addBookBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(addBookBtn.getContext(), AddBookActivity.class);
-                startActivityForResult(intent, addBookLaunch);
-            }
-        });
         return root;
     }
 
-    ArrayList<Book> getBooks() {
-        ArrayList<Book> books = new ArrayList<>();
-        InputStream inputStream = getResources().openRawResource(R.raw.books_list);
-        BufferedReader bufferedReader= new BufferedReader(new InputStreamReader(inputStream));
-        String eachline = null;
-        String booksStr = "";
-        try {
-            eachline = bufferedReader.readLine();
-            while (eachline != null) {
-                booksStr += eachline;
-                eachline = bufferedReader.readLine();
-            }
-            booksStr = booksStr.substring(booksStr.indexOf("[")+1, booksStr.lastIndexOf("]"));
-            String currBook;
-            Book book = new Book();
-            int elementStart;
-            while (!booksStr.isEmpty()) {
-                currBook = booksStr.substring(booksStr.indexOf("{")+1, booksStr.indexOf("}"));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"title\":")+"\"title\":".length());
-                book.setTitle(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"subtitle\":")+"\"subtitle\":".length());
-                book.setSubtitle(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"isbn13\":")+"\"isbn13\":".length());
-                book.setIsbn13(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"price\":")+"\"price\":".length());
-                book.setPrice(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                elementStart = currBook.indexOf("\"", currBook.indexOf("\"image\":")+"\"image\":".length());
-                book.setImage(currBook.substring(elementStart+1, currBook.indexOf("\"", elementStart+1)));
-                books.add(book);
-                book = new Book();
-                booksStr = booksStr.substring(booksStr.indexOf("}") + 1);
-            }
+    public class JSONTask extends AsyncTask<String, String, JSONArray> {
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        @Override
+        protected JSONArray doInBackground(String... params) {
+            HttpsURLConnection connection = null;
+            BufferedReader reader = null;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                }
+                String res = buffer.toString();
+                return new JSONArray(res.substring(res.indexOf("["), res.indexOf("]")+1));
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
         }
 
-
-        return books;
+        @Override
+        protected void onPostExecute(JSONArray result) {
+            adapter.clear();
+            for (int i = 0; i < result.length(); i++) {
+                try {
+                    JSONObject row = result.getJSONObject(i);
+                    String title = row.getString("title");
+                    String subtitle = row.getString("subtitle");
+                    String isbn13 = row.getString("isbn13");
+                    String price = row.getString("price");
+                    String image = row.getString("image");
+                    adapter.addBook(new Book(title, subtitle, isbn13, price, image));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (adapter.getItemCount() == 0) {
+                noResults.setVisibility(View.VISIBLE);
+            } else {
+                noResults.setVisibility(View.INVISIBLE);
+            }
+        }
     }
 
     @Override
     public void onBookClick(int position) {
         Intent intent = new Intent(this.getContext(), BookActivity.class);
-        intent.putExtra("book", books_result.get(position));
+        intent.putExtra("book", adapter.getBook(position));
         startActivity(intent);
-    }
-
-    @Override
-    public void onBookHold(int position) {
-        new AlertDialog.Builder(this.getContext())
-                .setTitle(this.getContext().getResources().getString(R.string.delete_confirm))
-                .setMessage("Do you really want to delete \"" + books_result.get(position).getTitle() + "\"?")
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        Book rmBook = books_result.get(position);
-                        for (int i=0; i<books.size(); i++) {
-                            if (books.get(i).getIsbn13().equals(rmBook.getIsbn13())) {
-                                books.remove(i);
-                            }
-                        }
-                        books_result.remove(position);
-                        adapter = new BooksAdapter(booksSearch.getContext(), books_result, BooksFragment.this);
-                        recyclerView.setAdapter(adapter);
-                        if (books_result.size() == 0) {
-                            noResults.setVisibility(View.VISIBLE);
-                        }
-                    }})
-                .setNegativeButton(android.R.string.no, null).show();
-
-    }
-
-
-    private void addBook(Book newBook) {
-        this.books.add(newBook);
-        if (this.booksSearch.getQuery().toString().isEmpty() || newBook.getTitle().toLowerCase().contains(this.booksSearch.getQuery().toString().toLowerCase())) {
-            books_result.add(newBook);
-            adapter = new BooksAdapter(booksSearch.getContext(), books_result, this);
-            recyclerView.setAdapter(adapter);
-            if (books_result.size() == 0) {
-                noResults.setVisibility(View.VISIBLE);
-            }
-        }
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == addBookLaunch) {
-            if (resultCode == Activity.RESULT_OK) {
-                Book newBook = data.getParcelableExtra("book");
-                this.addBook(newBook);
-            }
-        }
     }
 
 }
