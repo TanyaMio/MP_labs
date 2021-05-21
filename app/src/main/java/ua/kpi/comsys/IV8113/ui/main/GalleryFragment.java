@@ -2,6 +2,8 @@ package ua.kpi.comsys.IV8113.ui.main;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -34,6 +36,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 import ua.kpi.comsys.IV8113.R;
 import ua.kpi.comsys.IV8113.adapters.GalleryAdapter;
+import ua.kpi.comsys.IV8113.database.DatabaseHelper;
 import ua.kpi.comsys.IV8113.models.Book;
 
 public class GalleryFragment extends Fragment {
@@ -42,6 +45,8 @@ public class GalleryFragment extends Fragment {
     private static GalleryAdapter adapter;
     private static int screenWidth;
     private final String ImgRequest = "https://pixabay.com/api/?key=19193969-87191e5db266905fe8936d565&q=hot+summer&image_type=photo&per_page=24";
+    private static DatabaseHelper dbHelper;
+    private static SQLiteDatabase db;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -58,16 +63,19 @@ public class GalleryFragment extends Fragment {
         ((Activity) requireContext()).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
         screenWidth = displayMetrics.widthPixels;
 
+        dbHelper = new DatabaseHelper(this.getActivity().getApplicationContext(), DatabaseHelper.DB_Name, null, 1);
+        db = dbHelper.getWritableDatabase();
+
         recyclerView = root.findViewById(R.id.gallery);
         if (adapter == null) {
             adapter = new GalleryAdapter(this.getActivity().getApplicationContext(), screenWidth);
+            new JSONTask().execute(ImgRequest);
         } else {
+            new JSONTask().execute(ImgRequest);
             adapter.setMaxWidth(screenWidth);
             adapter.notifyDataSetChanged();
         }
         recyclerView.setAdapter(adapter);
-
-        new JSONTask().execute(ImgRequest);
 
         return root;
     }
@@ -113,19 +121,32 @@ public class GalleryFragment extends Fragment {
                     e.printStackTrace();
                 }
             }
-            return null;
+            return new JSONArray();
         }
 
         @Override
         protected void onPostExecute(JSONArray result) {
-            adapter.clear();
-            for (int i = 0; i < result.length(); i++) {
-                try {
-                    JSONObject row = result.getJSONObject(i);
-                    String imgURL = row.getString("webformatURL");
-                    adapter.addImg(imgURL);
-                } catch (JSONException e) {
-                    e.printStackTrace();
+            if (result.length() > 0) {
+                for (int i = 0; i < result.length(); i++) {
+                    try {
+                        JSONObject row = result.getJSONObject(i);
+                        String imgURL = row.getString("webformatURL");
+                        String imgID = Integer.valueOf(row.getInt("id")).toString();
+                        adapter.addImg(imgURL, imgID);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else {
+                Cursor cursor = db.query(dbHelper.Img_Table,
+                        new String[] {dbHelper.Img_Location, dbHelper.Img_Id},
+                        null, null, null, null, null);
+                if (cursor.getCount() > 0) {
+                    cursor.moveToFirst();
+                    for (int i = 0; i < cursor.getCount(); i++) {
+                        adapter.addImg(cursor.getString(0), cursor.getString(1));
+                        cursor.moveToNext();
+                    }
                 }
             }
         }

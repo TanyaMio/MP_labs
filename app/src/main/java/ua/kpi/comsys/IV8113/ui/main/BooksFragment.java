@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -41,6 +43,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 
@@ -51,6 +54,7 @@ import ua.kpi.comsys.IV8113.BookActivity;
 import ua.kpi.comsys.IV8113.Lab1;
 import ua.kpi.comsys.IV8113.R;
 import ua.kpi.comsys.IV8113.adapters.BooksAdapter;
+import ua.kpi.comsys.IV8113.database.DatabaseHelper;
 import ua.kpi.comsys.IV8113.models.Book;
 import ua.kpi.comsys.IV8113.adapters.BooksAdapter;
 
@@ -62,6 +66,9 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
     private SearchView booksSearch;
     private static TextView noResults;
     private final String apiURL = "https://api.itbook.store/1.0/search/";
+    private static DatabaseHelper dbHelper;
+    private static SQLiteDatabase db;
+    private static String origQuery;
 
 
     @Override
@@ -74,6 +81,9 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_books, container, false);
+
+        dbHelper = new DatabaseHelper(this.getActivity().getApplicationContext(), DatabaseHelper.DB_Name, null, 1);
+        db = dbHelper.getWritableDatabase();
 
         recyclerView = root.findViewById(R.id.books_list);
         if (adapter == null) {
@@ -98,6 +108,7 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
             public boolean onQueryTextChange(String newText) {
                 if (newText.length() > 2) {
                     try {
+                        origQuery = newText;
                         String query = URLEncoder.encode(newText.toLowerCase(), "utf-8");
                         String JSONurl = apiURL + query;
                         new JSONTask().execute(JSONurl);
@@ -155,23 +166,44 @@ public class BooksFragment extends Fragment implements BooksAdapter.BookListener
                     e.printStackTrace();
                 }
             }
-            return null;
+            return new JSONArray();
         }
 
         @Override
         protected void onPostExecute(JSONArray result) {
             adapter.clear();
-            for (int i = 0; i < result.length(); i++) {
-                try {
-                    JSONObject row = result.getJSONObject(i);
-                    String title = row.getString("title");
-                    String subtitle = row.getString("subtitle");
-                    String isbn13 = row.getString("isbn13");
-                    String price = row.getString("price");
-                    String image = row.getString("image");
-                    adapter.addBook(new Book(title, subtitle, isbn13, price, image));
-                } catch (JSONException e) {
-                    e.printStackTrace();
+            if (result.length() > 0) {
+                for (int i = 0; i < result.length(); i++) {
+                    try {
+                        JSONObject row = result.getJSONObject(i);
+                        String title = row.getString("title");
+                        String subtitle = row.getString("subtitle");
+                        String isbn13 = row.getString("isbn13");
+                        String price = row.getString("price");
+                        String image = row.getString("image");
+                        adapter.addBook(new Book(title, subtitle, isbn13, price, image));
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else {
+                Cursor cursor = db.query(dbHelper.Book_Table,
+                        new String[] {dbHelper.Book_Title, dbHelper.Book_Subtitle, dbHelper.Book_Isbn13, dbHelper.Book_Price, dbHelper.Book_Cover},
+                        null, null, null, null, null);
+                if (cursor.getCount() > 0) {
+                    cursor.moveToFirst();
+                    for (int i = 0; i < cursor.getCount(); i++) {
+                        if (cursor.getString(0).toLowerCase().contains(origQuery)) {
+                            String img = cursor.getString(4);
+                            if (img != null) {
+                                adapter.addBook(new Book(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3), cursor.getString(4)));
+                            } else {
+                                adapter.addBook(new Book(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3), ""));
+                            }
+
+                        }
+                        cursor.moveToNext();
+                    }
                 }
             }
             if (adapter.getItemCount() == 0) {

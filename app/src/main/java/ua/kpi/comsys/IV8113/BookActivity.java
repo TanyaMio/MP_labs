@@ -1,5 +1,9 @@
 package ua.kpi.comsys.IV8113;
 
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
@@ -11,12 +15,14 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -25,6 +31,7 @@ import java.net.URL;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import ua.kpi.comsys.IV8113.database.DatabaseHelper;
 import ua.kpi.comsys.IV8113.models.Book;
 
 public class BookActivity extends AppCompatActivity {
@@ -47,9 +54,14 @@ public class BookActivity extends AppCompatActivity {
     private static TextView rating;
     private static TextView description;
 
+    private static DatabaseHelper dbHelper;
+    private static SQLiteDatabase db;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        this.dbHelper = new DatabaseHelper(this.getApplicationContext(), DatabaseHelper.DB_Name, null, 1);
+        this.db = dbHelper.getWritableDatabase();
         Bundle bundle = getIntent().getExtras();
         book = (Book) bundle.getParcelable("book");
         setContentView(R.layout.activity_book);
@@ -67,13 +79,25 @@ public class BookActivity extends AppCompatActivity {
             cover = findViewById(R.id.book_cover);
             findViewById(R.id.cover_text).setVisibility(View.INVISIBLE);
             tmp = book.getImage();
+            if (tmp.contains("http")) {
+                Glide.with(this)
+                        .load(tmp)
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .placeholder(R.drawable.ic_action_load)
+                        .thumbnail(Glide.with(this).load(R.raw.spinner_icon))
+                        .dontAnimate()
+                        .into(cover);
+            } else {
+                Uri imgUri = Uri.fromFile(new File(tmp));
+                Glide.with(this)
+                        .load(imgUri)
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .placeholder(R.drawable.ic_action_load)
+                        .thumbnail(Glide.with(this).load(R.raw.spinner_icon))
+                        .dontAnimate()
+                        .into(cover);
+            }
 
-            Glide.with(this)
-                    .load(tmp)
-                    .placeholder(R.drawable.ic_action_load)
-                    .thumbnail(Glide.with(this).load(R.raw.spinner_icon))
-                    .dontAnimate()
-                    .into(cover);
         }
         if (book.getTitle() != null && !book.getTitle().isEmpty()) {
             title = findViewById(R.id.book_title);
@@ -91,8 +115,9 @@ public class BookActivity extends AppCompatActivity {
             price.setTextColor(getResources().getColor(R.color.black));
         }
         if (book.getIsbn13() != null && !book.getIsbn13().isEmpty()) {
+            tmp = getResources().getString(R.string.isbn) + book.getIsbn13();
             isbn = findViewById(R.id.book_isbn);
-            isbn.setText(book.getIsbn13());
+            isbn.setText(tmp);
             isbn.setTextColor(getResources().getColor(R.color.black));
             authors = findViewById(R.id.book_authors);
             publisher = findViewById(R.id.book_publisher);
@@ -148,45 +173,81 @@ public class BookActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-            return null;
+            return new JSONObject();
         }
 
         @Override
         protected void onPostExecute(JSONObject result) {
-            try {
-                book.setAuthors(result.getString("authors"));
-                book.setPublisher(result.getString("publisher"));
-                book.setYear(result.getString("year"));
-                book.setPages(result.getString("pages"));
-                book.setRating(result.getString("rating"));
-                book.setDescription(result.getString("desc"));
-                if (book.getAuthors() != null && !book.getAuthors().isEmpty()) {
-                    authors.setText(book.getAuthors());
-                    authors.setTextColor(getResources().getColor(R.color.black));
+            if (!result.isNull("authors")) {
+                try {
+                    book.setAuthors(result.getString("authors"));
+                    book.setPublisher(result.getString("publisher"));
+                    book.setYear(result.getString("year"));
+                    book.setPages(result.getString("pages"));
+                    book.setRating(result.getString("rating"));
+                    book.setDescription(result.getString("desc"));
+                    ContentValues values = new ContentValues();
+                    values.put(dbHelper.Book_Authors, book.getAuthors());
+                    values.put(dbHelper.Book_Publisher, book.getPublisher());
+                    values.put(dbHelper.Book_Year, book.getYear());
+                    values.put(dbHelper.Book_Pages, book.getPages());
+                    values.put(dbHelper.Book_Rating, book.getRating());
+                    values.put(dbHelper.Book_Description, book.getDescription());
+                    db.update(dbHelper.Book_Table, values, dbHelper.Book_Isbn13 + " = " + book.getIsbn13(), null);
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
-                if (book.getPublisher() != null && !book.getPublisher().isEmpty()) {
-                    publisher.setText(book.getPublisher());
-                    publisher.setTextColor(getResources().getColor(R.color.black));
+            } else {
+                Cursor cursor = db.query(dbHelper.Book_Table,
+                        new String[] {dbHelper.Book_Authors, dbHelper.Book_Publisher, dbHelper.Book_Year, dbHelper.Book_Pages, dbHelper.Book_Rating, dbHelper.Book_Description},
+                        dbHelper.Book_Isbn13 + " = " + book.getIsbn13(),
+                        null, null, null, null);
+                if (cursor.getCount() != 0) {
+                    cursor.moveToFirst();
+                    if (cursor.getString(0) != null) {
+                        book.setAuthors(cursor.getString(0));
+                    }
+                    if (cursor.getString(1) != null) {
+                        book.setPublisher(cursor.getString(1));
+                    }
+                    if (cursor.getString(2) != null) {
+                        book.setYear(cursor.getString(2));
+                    }
+                    if (cursor.getString(3) != null) {
+                        book.setPages(cursor.getString(3));
+                    }
+                    if (cursor.getString(4) != null) {
+                        book.setRating(cursor.getString(4));
+                    }
+                    if (cursor.getString(5) != null) {
+                        book.setDescription(cursor.getString(5));
+                    }
                 }
-                if (book.getYear() != null && !book.getYear().isEmpty()) {
-                    year.setText(book.getYear());
-                    year.setTextColor(getResources().getColor(R.color.black));
-                }
-                if (book.getPages() != null && !book.getPages().isEmpty()) {
-                    pages.setText(book.getPages());
-                    pages.setTextColor(getResources().getColor(R.color.black));
-                }
-                if (book.getRating() != null && !book.getRating().isEmpty()) {
-                    String tmp = book.getRating() + getResources().getString(R.string.outof5);
-                    rating.setText(tmp);
-                    rating.setTextColor(getResources().getColor(R.color.black));
-                }
-                if (book.getDescription() != null && !book.getDescription().isEmpty()) {
-                    description.setText(book.getDescription());
-                    description.setTextColor(getResources().getColor(R.color.black));
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
+            }
+            if (book.getAuthors() != null && !book.getAuthors().isEmpty()) {
+                authors.setText(book.getAuthors());
+                authors.setTextColor(getResources().getColor(R.color.black));
+            }
+            if (book.getPublisher() != null && !book.getPublisher().isEmpty()) {
+                publisher.setText(book.getPublisher());
+                publisher.setTextColor(getResources().getColor(R.color.black));
+            }
+            if (book.getYear() != null && !book.getYear().isEmpty()) {
+                year.setText(book.getYear());
+                year.setTextColor(getResources().getColor(R.color.black));
+            }
+            if (book.getPages() != null && !book.getPages().isEmpty()) {
+                pages.setText(book.getPages());
+                pages.setTextColor(getResources().getColor(R.color.black));
+            }
+            if (book.getRating() != null && !book.getRating().isEmpty()) {
+                String tmp = book.getRating() + getResources().getString(R.string.outof5);
+                rating.setText(tmp);
+                rating.setTextColor(getResources().getColor(R.color.black));
+            }
+            if (book.getDescription() != null && !book.getDescription().isEmpty()) {
+                description.setText(book.getDescription());
+                description.setTextColor(getResources().getColor(R.color.black));
             }
         }
     }

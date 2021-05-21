@@ -1,5 +1,6 @@
 package ua.kpi.comsys.IV8113;
 
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -13,9 +14,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import ua.kpi.comsys.IV8113.database.DatabaseHelper;
 import ua.kpi.comsys.IV8113.ui.main.SectionsPagerAdapter;
 
 public class Lab1 extends AppCompatActivity {
+
+    private static DatabaseHelper dbHelper;
+    private static SQLiteDatabase db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,5 +35,16 @@ public class Lab1 extends AppCompatActivity {
         tabs.getTabAt(1).setIcon(R.drawable.ic_action_graph);
         tabs.getTabAt(2).setIcon(R.drawable.ic_action_book);
         tabs.getTabAt(3).setIcon(R.drawable.ic_action_img);
+        DatabaseHelper dbHelper = new DatabaseHelper(this.getApplicationContext(), "MP_Labs_DB", null, 1);
+        dbHelper = new DatabaseHelper(getApplicationContext(), DatabaseHelper.DB_Name, null, 1);
+        db = dbHelper.getWritableDatabase();
+    }
+
+    public SQLiteDatabase getDB () {
+        return this.db;
+    }
+
+    public DatabaseHelper getDBhelper () {
+        return this.dbHelper;
     }
 }
